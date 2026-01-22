@@ -105,7 +105,7 @@ ssl_context.load_verify_locations(cadata=ssl_cert)
 
 
 url = "https://api.entur.io/journey-planner/v3/graphql"
-payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1){tripPatterns{expectedStartTime}}}"""
+payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){tripPatterns{expectedStartTime}}}"""
 print("Fetching text from %s" % url)
 
 requests = adafruit_requests.Session(pool, ssl_context)
@@ -126,7 +126,7 @@ WIDTH = 128
 HEIGHT = 32
 
 text = time
-text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, x=28, y=HEIGHT // 2 - 1)
+text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=2, x=28, y=HEIGHT // 2 - 1)
 splash.append(text_area)
 
 
