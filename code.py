@@ -1,3 +1,4 @@
+import time
 import board
 import busio
 import displayio
@@ -103,32 +104,31 @@ ssl_context.load_verify_locations(cadata=ssl_cert)
 
 
 
-
 url = "https://api.entur.io/journey-planner/v3/graphql"
 payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){tripPatterns{expectedStartTime}}}"""
-print("Fetching text from %s" % url)
 
 requests = adafruit_requests.Session(pool, ssl_context)
-response = requests.post(url, data=payload, headers={"Content-Type": "application/graphql"})
-json_resp = response.json()
-
-expected_start_time = json_resp["data"]["trip"]["tripPatterns"][0]["expectedStartTime"]
-
-dt_object = datetime.fromisoformat(expected_start_time)
-time = f"{dt_object.hour}:{dt_object.minute}"
-print(f"Time: {time}")
-
-
-splash = displayio.Group()
-display.root_group = splash
-
-WIDTH = 128
-HEIGHT = 32
-
-text = time
-text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=2, x=28, y=HEIGHT // 2 - 1)
-splash.append(text_area)
-
 
 while True:
-    pass
+    print("Fetching text from %s" % url)
+    response = requests.post(url, data=payload, headers={"Content-Type": "application/graphql"})
+    json_resp = response.json()
+
+    expected_start_time = json_resp["data"]["trip"]["tripPatterns"][0]["expectedStartTime"]
+
+    dt_object = datetime.fromisoformat(expected_start_time)
+    time_formatted = f"{dt_object.hour}:{dt_object.minute}"
+    print(f"Time: {time_formatted}")
+
+
+    splash = displayio.Group()
+    display.root_group = splash
+
+    WIDTH = 128
+    HEIGHT = 32
+
+    text = time_formatted
+    text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=3, x=20, y=HEIGHT // 2 - 1)
+    splash.append(text_area)
+
+    time.sleep(60)
