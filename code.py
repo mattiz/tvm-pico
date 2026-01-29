@@ -15,9 +15,13 @@ import adafruit_requests
 from adafruit_datetime import datetime
 
 
+WIDTH = 128
+HEIGHT = 64
+
+
 url = "https://api.entur.io/journey-planner/v3/graphql"
 
-payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){tripPatterns{expectedStartTime}}}"""
+payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){dateTime tripPatterns{expectedStartTime}}}"""
 
 ssl_cert = '''-----BEGIN CERTIFICATE-----
 MIIFCzCCAvOgAwIBAgIQf/AFqRVo1jq8IoYWhKpLWjANBgkqhkiG9w0BAQsFADBH
@@ -58,7 +62,7 @@ def configure_display():
 
     i2c = busio.I2C(board.GP1, board.GP0)
     display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address=0x3c)
-    display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=32)
+    display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=WIDTH, height=HEIGHT, rotation=180)
     return display
 
 
@@ -103,9 +107,6 @@ def update_display(display, text):
     splash = displayio.Group()
     display.root_group = splash
 
-    WIDTH = 128
-    HEIGHT = 32
-
     text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=3, x=20, y=HEIGHT // 2 - 1)
     splash.append(text_area)
 
@@ -120,13 +121,68 @@ def fetch_expected_start_time(url, payload, requests):
     json_resp = response.json()
 
     print("Parsing json response")
-    expected_start_time = json_resp["data"]["trip"]["tripPatterns"][0]["expectedStartTime"]
+    expected_start_time_str = json_resp["data"]["trip"]["tripPatterns"][0]["expectedStartTime"]
+    current_time_str = json_resp["data"]["trip"]["dateTime"]
 
     print("Parsing datetime")
-    dt_object = datetime.fromisoformat(expected_start_time)
-    time_formatted = f"{dt_object.hour}:{dt_object.minute}"
+    expected_start_time = datetime.fromisoformat(expected_start_time_str)
+    time_formatted = f"{expected_start_time.hour}:{expected_start_time.minute}"
     print(f"Time: {time_formatted}")
-    return time_formatted
+
+    current_time = datetime.fromisoformat(current_time_str)
+    print(f"Current time: {current_time.hour}:{current_time.minute}")
+
+    delta = expected_start_time.__sub__(current_time)
+    delta_minutes = round(delta.total_seconds()/60)
+    print(f"Delta minutes: {delta_minutes} min")
+
+    return time_formatted, str(delta_minutes)
+
+
+#
+# TEST DISPLAY
+#
+def update_display_two(display, expected_start_time, num_minutes):
+    print("Updating display")
+
+    main_group = displayio.Group()
+
+    line_nr = label.Label(terminalio.FONT,
+                            text=" L1 ",
+                            color=0x0000FF,
+                            background_color=0xFFAA00,
+                            x=19,
+                            y=5)
+
+    main_group.append(line_nr)
+
+    line_name = label.Label(terminalio.FONT,
+                            text="Lillestrom",
+                            color=0xFFAA00,
+                            x=47,
+                            y=5)
+
+    main_group.append(line_name)
+
+    start_time = label.Label(terminalio.FONT,
+                            text=expected_start_time,
+                            color=0xFFAA00,
+                            x=18,
+                            y=32,
+                            scale=3)
+
+    main_group.append(start_time)
+
+    num_min = label.Label(terminalio.FONT,
+                            text=num_minutes,
+                            color=0xFFAA00,
+                            x=45,
+                            y=55)
+
+    main_group.append(num_min)
+
+    display.root_group = main_group
+
 
 
 
@@ -144,10 +200,10 @@ ssl_context.load_verify_locations(cadata=ssl_cert)
 requests = adafruit_requests.Session(pool, ssl_context)
 
 
-
 while True:
-    start_time = fetch_expected_start_time(url, payload, requests)
+    start_time, delta_minutes = fetch_expected_start_time(url, payload, requests)
 
-    update_display(display, start_time)
+    #update_display(display, start_time)
+    update_display_two(display, start_time, delta_minutes + " min")
 
     time.sleep(60)
