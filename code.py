@@ -6,24 +6,6 @@ import i2cdisplaybus
 import adafruit_displayio_ssd1306
 import terminalio
 from adafruit_display_text import label
-
-
-
-
-displayio.release_displays()
-
-i2c = busio.I2C(board.GP1, board.GP0)
-display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address=0x3c)
-display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=32)
-
-
-
-
-
-
-
-
-
 from os import getenv
 import ipaddress
 import wifi
@@ -33,44 +15,9 @@ import adafruit_requests
 from adafruit_datetime import datetime
 
 
+url = "https://api.entur.io/journey-planner/v3/graphql"
 
-
-
-
-ssid = getenv("WIFI_SSID")
-password = getenv("WIFI_PASSWORD")
-
-print()
-print("Connecting to WiFi")
-
-#  connect to your SSID
-try:
-    wifi.radio.connect(ssid, password)
-except TypeError:
-    print("Could not find WiFi info. Check your settings.toml file!")
-    raise
-
-print("Connected to WiFi")
-
-pool = socketpool.SocketPool(wifi.radio)
-
-# #  prints MAC address to REPL
-# print("My MAC addr:", [hex(i) for i in wifi.radio.mac_address])
-
-# #  prints IP address to REPL
-# print(f"My IP address is {wifi.radio.ipv4_address}")
-
-# #  pings Google
-# ipv4 = ipaddress.ip_address("8.8.4.4")
-# print("Ping google.com: %f ms" % (wifi.radio.ping(ipv4)*1000))
-
-
-
-
-
-
-
-ssl_context = ssl.create_default_context()
+payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){tripPatterns{expectedStartTime}}}"""
 
 ssl_cert = '''-----BEGIN CERTIFICATE-----
 MIIFCzCCAvOgAwIBAgIQf/AFqRVo1jq8IoYWhKpLWjANBgkqhkiG9w0BAQsFADBH
@@ -101,16 +48,72 @@ a1tLUlzs0zLEdQSehTCjZ6SYsGt2bMVK6dvtxzcyCP0QDUFnNXCwgw12+mGSkAuj
 h7QV8DKyBTUHbjH0pXlLiOsSOY+CLh1eTM+Do6rSjqGnDQeUXylZmPCmuveaw38I
 VnBaa6Eiz6pngZ1u6OeO/1UzfhmyTm0n0G+9JZ3KS2Mq08isNgXHLnhlHJaphpE=
 -----END CERTIFICATE-----'''
-ssl_context.load_verify_locations(cadata=ssl_cert)
 
 
+#
+# Configure display
+#
+def configure_display():
+    displayio.release_displays()
 
-url = "https://api.entur.io/journey-planner/v3/graphql"
-payload = """{trip(from:{place:"NSR:StopPlace:337"}to:{place:"NSR:StopPlace:716"}numTripPatterns:1 maximumTransfers:1){tripPatterns{expectedStartTime}}}"""
+    i2c = busio.I2C(board.GP1, board.GP0)
+    display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address=0x3c)
+    display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=32)
+    return display
 
-requests = adafruit_requests.Session(pool, ssl_context)
 
-while True:
+#
+# Connect to WiFi
+#
+def connect_wifi():
+    ssid = getenv("WIFI_SSID")
+    password = getenv("WIFI_PASSWORD")
+
+    print()
+    print("Connecting to WiFi")
+
+    try:
+        wifi.radio.connect(ssid, password)
+    except TypeError:
+        print("Could not find WiFi info. Check your settings.toml file!")
+        raise
+
+    print("Connected to WiFi")
+
+    pool = socketpool.SocketPool(wifi.radio)
+    return pool
+
+
+#
+# Print information about WiFi connection
+#
+def debug_wifi():
+    print("My MAC addr:", [hex(i) for i in wifi.radio.mac_address])
+    print(f"My IP address is {wifi.radio.ipv4_address}")
+
+    ipv4 = ipaddress.ip_address("8.8.4.4")
+    print("Ping google.com: %f ms" % (wifi.radio.ping(ipv4)*1000))
+
+
+#
+# Update display with text
+#
+def update_display(display, text):
+    print("Updating display")
+    splash = displayio.Group()
+    display.root_group = splash
+
+    WIDTH = 128
+    HEIGHT = 32
+
+    text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=3, x=20, y=HEIGHT // 2 - 1)
+    splash.append(text_area)
+
+
+#
+# Fetch expected start time from API
+#
+def fetch_expected_start_time(url, payload, requests):
     print("Fetching text from %s" % url)
     response = requests.post(url, data=payload, headers={"Content-Type": "application/graphql"})
     print("Getting json response")
@@ -123,16 +126,28 @@ while True:
     dt_object = datetime.fromisoformat(expected_start_time)
     time_formatted = f"{dt_object.hour}:{dt_object.minute}"
     print(f"Time: {time_formatted}")
+    return time_formatted
 
-    print("Updating display")
-    splash = displayio.Group()
-    display.root_group = splash
 
-    WIDTH = 128
-    HEIGHT = 32
 
-    text = time_formatted
-    text_area = label.Label(terminalio.FONT, text=text, color=0xFFFFFF, scale=3, x=20, y=HEIGHT // 2 - 1)
-    splash.append(text_area)
+display = configure_display()
+
+pool = connect_wifi()
+
+debug_wifi()
+
+
+ssl_context = ssl.create_default_context()
+ssl_context.load_verify_locations(cadata=ssl_cert)
+
+
+requests = adafruit_requests.Session(pool, ssl_context)
+
+
+
+while True:
+    start_time = fetch_expected_start_time(url, payload, requests)
+
+    update_display(display, start_time)
 
     time.sleep(60)
