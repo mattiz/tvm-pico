@@ -36,6 +36,7 @@ from adafruit_datetime import datetime
 
 
 
+
 ssid = getenv("WIFI_SSID")
 password = getenv("WIFI_PASSWORD")
 
@@ -112,15 +113,18 @@ requests = adafruit_requests.Session(pool, ssl_context)
 while True:
     print("Fetching text from %s" % url)
     response = requests.post(url, data=payload, headers={"Content-Type": "application/graphql"})
+    print("Getting json response")
     json_resp = response.json()
 
+    print("Parsing json response")
     expected_start_time = json_resp["data"]["trip"]["tripPatterns"][0]["expectedStartTime"]
 
+    print("Parsing datetime")
     dt_object = datetime.fromisoformat(expected_start_time)
     time_formatted = f"{dt_object.hour}:{dt_object.minute}"
     print(f"Time: {time_formatted}")
 
-
+    print("Updating display")
     splash = displayio.Group()
     display.root_group = splash
 
