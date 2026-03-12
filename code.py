@@ -1,4 +1,5 @@
 import time
+import microcontroller
 import board
 import busio
 import displayio
@@ -200,10 +201,19 @@ ssl_context.load_verify_locations(cadata=ssl_cert)
 requests = adafruit_requests.Session(pool, ssl_context)
 
 
+error_count = 0
 while True:
-    start_time, delta_minutes = fetch_expected_start_time(url, payload, requests)
+    try:
+        start_time, delta_minutes = fetch_expected_start_time(url, payload, requests)
+        update_display_two(display, start_time, delta_minutes + " min")
+        error_count = 0
+        time.sleep(30)
 
-    #update_display(display, start_time)
-    update_display_two(display, start_time, delta_minutes + " min")
+    except Exception as e:
+        print(f"Error: {e}")
+        time.sleep(5)
+        error_count += 1
+        if error_count >= 2:
+            microcontroller.reset()
 
-    time.sleep(60)
+    
