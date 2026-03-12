@@ -14,10 +14,12 @@ A Raspberry Pi Pico W project that displays the next train departure on a small 
 1. Install [CircuitPython](https://circuitpython.org/) on the Pico W
 2. Connect the device to your computer via USB
 3. Copy the `lib/` dependencies to the device
-4. Create a `settings.toml` on the device with your WiFi credentials:
+4. Create a `settings.toml` on the device with your WiFi credentials. Multiple networks are supported — the device scans and connects to the first available one:
    ```toml
-   WIFI_SSID = "your_ssid"
-   WIFI_PASSWORD = "your_password"
+   WIFI_SSID_0 = "your_ssid"
+   WIFI_PASSWORD_0 = "your_password"
+   WIFI_SSID_1 = "another_ssid"
+   WIFI_PASSWORD_1 = "another_password"
    ```
 5. Deploy with `./sync.sh`
 

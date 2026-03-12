@@ -68,25 +68,39 @@ def configure_display():
 
 
 #
-# Connect to WiFi
+# Load configured WiFi networks from settings.toml
+# Supports WIFI_SSID/WIFI_PASSWORD and WIFI_SSID_1/WIFI_PASSWORD_1, WIFI_SSID_2/WIFI_PASSWORD_2, etc.
+#
+def load_wifi_networks():
+    networks = []
+    for i in range(0, 10):
+        ssid = getenv(f"WIFI_SSID_{i}")
+        if ssid:
+            networks.append((ssid, getenv(f"WIFI_PASSWORD_{i}")))
+    return networks
+
+
+#
+# Connect to WiFi - tries each configured network
 #
 def connect_wifi():
-    ssid = getenv("WIFI_SSID")
-    password = getenv("WIFI_PASSWORD")
+    networks = load_wifi_networks()
+    if not networks:
+        raise RuntimeError("No WiFi networks configured in settings.toml")
 
-    print()
-    print("Connecting to WiFi %s..." % ssid)
+    available = [ap.ssid for ap in wifi.radio.start_scanning_networks()]
+    wifi.radio.stop_scanning_networks()
+    print("Available networks:", available)
 
-    try:
-        wifi.radio.connect(ssid, password)
-    except TypeError:
-        print("Could not find WiFi info. Check your settings.toml file!")
-        raise
+    for ssid, password in networks:
+        if ssid in available:
+            print(f"Connecting to WiFi {ssid}...")
+            wifi.radio.connect(ssid, password)
+            print("Connected to WiFi")
+            pool = socketpool.SocketPool(wifi.radio)
+            return pool
 
-    print("Connected to WiFi")
-
-    pool = socketpool.SocketPool(wifi.radio)
-    return pool
+    raise RuntimeError(f"None of the configured networks found: {[n[0] for n in networks]}")
 
 
 #

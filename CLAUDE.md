@@ -24,9 +24,8 @@ CircuitPython auto-reloads when `code.py` changes on the device.
 
 ## WiFi Configuration
 
-WiFi credentials are read from `settings.toml` on the device (not in this repo) via `os.getenv()`:
-- `WIFI_SSID`
-- `WIFI_PASSWORD`
+WiFi credentials are read from `settings.toml` on the device (not in this repo) via `os.getenv()`. Supports multiple networks — the device scans and connects to the first available one:
+- `WIFI_SSID_0` / `WIFI_PASSWORD_0`, `WIFI_SSID_1` / `WIFI_PASSWORD_1`, etc.
 
 ## Dependencies
 
