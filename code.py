@@ -74,7 +74,7 @@ def connect_wifi():
     password = getenv("WIFI_PASSWORD")
 
     print()
-    print("Connecting to WiFi")
+    print("Connecting to WiFi %s..." % ssid)
 
     try:
         wifi.radio.connect(ssid, password)
